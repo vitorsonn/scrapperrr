@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid()) 
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  products  Product[]
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  url          String   @unique //url unica para nao duplicar produtos
+  name         String?
+  targetPrice  Float
+  currentPrice Float? //preço atual para comparação
+  createdAt    DateTime @default(now())
+
+  userId String?
+  user   User? @relation(fields: [userId], references: [id])
+
+  priceHistory PriceHistory[] //historico de preços
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  price     Float
+  createdAt DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId, createdAt])
+}
+

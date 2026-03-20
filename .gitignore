@@ -1,0 +1,17 @@
+node_modules
+.env
+
+/generated/prisma
+
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+.cache/
+*.log
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
