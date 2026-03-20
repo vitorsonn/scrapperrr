@@ -1,10 +1,15 @@
 import { productRepository } from "../repositories/productRepository";
 import { genericScrapper } from "../scrapper/genericScrapper";
 
-//adicionando produtos pela URL
+//adicionando produtos pela URL e salvando no bd
+
+
 const createProduct = async(url: string, targetPrice: number) => {
-    if(!url || !targetPrice){
-        throw new Error("invalid data")
+    
+    const cleanUrl = url?.trim()
+
+    if(!cleanUrl){
+        throw new Error("invalid Url")
     }
 
     const existing = await productRepository.findByUrl(url)
@@ -13,12 +18,28 @@ const createProduct = async(url: string, targetPrice: number) => {
         throw new Error("product already exists")
     }
 
-    const scrapedProduct = await genericScrapper.getProductData(url)
+    if (typeof targetPrice !== "number" || !Number.isFinite(targetPrice) || targetPrice <= 0) {
+        throw new Error("invalid targetPrice");
+      }
+
+
+    //scrapper "acontece" aqui
+    const scrapedProduct = await genericScrapper.getProductData(cleanUrl)
+
+    const cleanName = scrapedProduct.name?.trim();
+    if (!cleanName) {
+      throw new Error("invalid scraped product name");
+    }
+    // valida preço do scrapper (Prisma: Float pode ser null, mas aqui você vai salvar currentPrice)
+    const scrapedPrice = scrapedProduct.price;
+    if (typeof scrapedPrice !== "number" || !Number.isFinite(scrapedPrice) || scrapedPrice <= 0) {
+      throw new Error("invalid scraped product price");
+    }
 
     return productRepository.create({
-        url,
-        name: scrapedProduct.name,
-        currentPrice: scrapedProduct.price,
+        url: cleanUrl,
+        name: cleanName,
+        currentPrice: scrapedPrice,
         targetPrice
     })
 
@@ -29,10 +50,20 @@ const findAllProducts = async () => {
     return productRepository.findAll()
 }
 
-const updatePrice = async (productId: string, price: number) => {
-    await productRepository.updateCurrentPrice(productId, price)
+const updatePrice = async (productId: string, url: string) => {
+try{
+    const cleanUrl = url?.trim()
+    const scrapedProduct = await genericScrapper.getProductData(cleanUrl)
 
-    await productRepository.createPriceHistory(productId, price)
+    await productRepository.updateCurrentPrice(productId, scrapedProduct.price)
+    await productRepository.createPriceHistory(productId, scrapedProduct.price)
+
+}
+
+catch(err){
+    console.error("Scraping failed for:", url);
+}
+    
 }
 
 export const productService = {
