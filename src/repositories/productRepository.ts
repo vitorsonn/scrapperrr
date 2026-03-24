@@ -24,6 +24,13 @@ const updateCurrentPrice = (id: string, price: number) => {
   });
 };
 
+const updateNameAndCurrentPrice = (id: string, data: { name?: string; currentPrice?: number }) => {
+  return prisma.product.update({
+    where: { id },
+    data,
+  });
+};
+
 const createPriceHistory = (productId: string, price: number) => {
   return prisma.priceHistory.create({
     data: {
@@ -38,5 +45,6 @@ export const productRepository = {
   findByUrl,
   findAll,
   updateCurrentPrice,
+  updateNameAndCurrentPrice,
   createPriceHistory,
 };
