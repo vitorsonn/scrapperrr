@@ -5,6 +5,7 @@ const create = (data: {
   targetPrice: number;
   name?: string;
   currentPrice?: number;
+  lastNotifiedPrice?: number | null;
 }) => {
   return prisma.product.create({ data });
 };
@@ -13,18 +14,45 @@ const findByUrl = (url: string) => {
   return prisma.product.findUnique({ where: { url } });
 };
 
+const findById = async (id: string) => {
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      currentPrice: true,
+      targetPrice: true,
+      lastNotifiedPrice: true,
+    },
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  return product;
+};
+
+const updateLastNotifiedPrice = (id: string, price: number) => {
+  return prisma.product.update({
+    where: { id },
+    data: { lastNotifiedPrice: price },
+  });
+};
+
 const findAll = () => {
   return prisma.product.findMany();
 };
 
-const updateCurrentPrice = (id: string, price: number) => {
-  return prisma.product.update({
-    where: { id },
-    data: { currentPrice: price },
-  });
-};
-
-const updateNameAndCurrentPrice = (id: string, data: { name?: string; currentPrice?: number }) => {
+const update = (
+  id: string,
+  data: Partial<{
+    name: string;
+    currentPrice: number;
+    lastNotifiedPrice: number;
+  }>,
+) => {
   return prisma.product.update({
     where: { id },
     data,
@@ -43,8 +71,9 @@ const createPriceHistory = (productId: string, price: number) => {
 export const productRepository = {
   create,
   findByUrl,
+  findById,
   findAll,
-  updateCurrentPrice,
-  updateNameAndCurrentPrice,
+  update,
   createPriceHistory,
+  updateLastNotifiedPrice,
 };

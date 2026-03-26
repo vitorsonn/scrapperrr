@@ -1,35 +1,57 @@
-// scrapers/genericScraper.ts
 import { chromium } from "playwright";
-import { Scraper } from "../models/scraper";
+import { ScrapedProduct, Scraper } from "../models/scraper";
 
-export const genericScraper: Scraper = {
-  id: "generic",
+export class genericScraper implements Scraper {
+  constructor(private url: string) {}
 
-  canHandle: () => true,
+  static canHandle(): boolean {
+    return true;
+  }
 
-  async getProductData(url: string) {
-    const browser = await chromium.launch();
+  async scrap(): Promise<ScrapedProduct> {
+    const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
 
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    try {
+      await page.goto(this.url, { waitUntil: "networkidle", timeout: 30000 });
 
-    // ⚠️ você vai precisar ajustar isso por site
-    const name = await page.title();
+      const name = await page.title();
 
-    const priceText = await page.locator("body").innerText();
+      const candidates = await page
+        .locator(
+          `
+        [class*="price"],
+        [id*="price"],
+        [data-testid*="price"]
+      `,
+        )
+        .allInnerTexts();
 
-    await browser.close();
+      const price = this.extractBestPrice(candidates);
 
-    return {
-      name,
-      price: extractPrice(priceText),
-    };
-  },
-};
+      if (!price) {
+        throw new Error("Price not found");
+      }
 
-function extractPrice(text: string): number {
-  const match = text.match(/\d+[\.,]\d{2}/);
-  if (!match) throw new Error("Price not found");
+      return { name, price };
+    } catch (error) {
+      throw new Error(`Scraping failed: ${error}`);
+    } finally {
+      await browser.close();
+    }
+  }
 
-  return parseFloat(match[0].replace(",", "."));
+  private extractBestPrice(texts: string[]): number | null {
+    for (const text of texts) {
+      const match = text.match(/R?\$\s?\d+[.,]?\d*/);
+      if (match) {
+        return this.normalizePrice(match[0]);
+      }
+    }
+    return null;
+  }
+
+  private normalizePrice(price: string): number {
+    return Number(price.replace(/[^\d,]/g, "").replace(",", "."));
+  }
 }

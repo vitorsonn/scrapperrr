@@ -21,11 +21,11 @@ model Product {
   name         String?
   targetPrice  Float
   currentPrice Float? //preço atual para comparação
+  lastNotifiedPrice Float?  
   createdAt    DateTime @default(now())
 
   userId String?
   user   User? @relation(fields: [userId], references: [id])
-
   priceHistory PriceHistory[] //historico de preços
 }
 
